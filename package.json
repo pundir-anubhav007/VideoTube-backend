@@ -4,9 +4,9 @@
   "description": "",
   "license": "ISC",
   "author": "Anubhav Pundir",
-  "type": "commonjs",
+  "type": "module",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "run": "node --watch src/index.js"
   }
 }
