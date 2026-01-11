@@ -32,21 +32,21 @@ const registerUser = asyncHandler(async (req, res) => {
     $or: [{ username }, { email }],
   });
 
-  if (existingUser.username === username) {
-    throw new ApiError(409, "Username already taken");
-  }
-
-  if (existingUser.email === email) {
-    throw new ApiError(409, "Email already registered");
+  if (existingUser) {
+    throw new ApiError(409, "User with given username or email already exists");
   }
 
   const avatarLocalPath = req.files?.avatar[0]?.path;
-  const coverImageLocalPath = req.files?.coverImage[0]?.path;
+  const coverImageLocalPath = req.files?.coverImage?.[0]?.path; // small change from gpt
 
   if (!avatarLocalPath) throw new ApiError(400, "Avatar file is required");
 
   const uploadedAvatar = await uploadOnCloudinary(avatarLocalPath);
-  const uploadedCoverImage = await uploadOnCloudinary(coverImageLocalPath);
+
+  // this logic is from chatgpt of no coverImageLocalPath
+
+  const uploadedCoverImage =
+    coverImageLocalPath && (await uploadOnCloudinary(coverImageLocalPath));
 
   if (!uploadedAvatar) throw new ApiError(400, "Avatar file is required");
 
