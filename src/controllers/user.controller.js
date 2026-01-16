@@ -67,7 +67,7 @@ const registerUser = asyncHandler(async (req, res) => {
   const uploadedCoverImage =
     coverImageLocalPath && (await uploadOnCloudinary(coverImageLocalPath));
 
-  if (!uploadedAvatar) throw new ApiError(400, "Avatar file is required");
+  if (!uploadedAvatar) throw new ApiError(400, "Error while uploading avatar on cloudinary");
 
   const user = await User.create({
     fullName,
@@ -164,10 +164,17 @@ const logOutUser = asyncHandler(async (req, res) => {
     secure: true
   }
 
-  return res.status(200)
-  .clearCookie("accessToken", options)
-  .clearCookie("refreshToken", options)
-  .json(200, {}, "User logged Out")
+  return res
+    .status(200)
+    .clearCookie("accessToken", options)
+    .clearCookie("refreshToken", options)
+    .json(
+      new ApiResponse(
+        200,
+        {},
+        "User Logged Out Successfully"
+      )
+    );
 })
 
 export { registerUser, loginUser, logOutUser };

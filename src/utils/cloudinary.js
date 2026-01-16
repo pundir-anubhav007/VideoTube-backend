@@ -11,7 +11,7 @@ cloudinary.config({
 const uploadOnCloudinary = async (localFilePath) => {
   try {
     // tried something different
-    if (!localFilePath) throw new ApiError(500, "Error in file Upload");
+    if (!localFilePath) throw new ApiError(500, "Error in file Upload at cloudinary");
     const response = await cloudinary.uploader.upload(localFilePath, {
       resource_type: "auto",
     });
