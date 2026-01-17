@@ -60,19 +60,22 @@ const registerUser = asyncHandler(async (req, res) => {
 
   if (!avatarLocalPath) throw new ApiError(400, "Avatar file is required");
 
-  const uploadedAvatar = await uploadOnCloudinary(avatarLocalPath);
+  const uploadedAvatar = await uploadOnCloudinary(avatarLocalPath,"users/avatars");
 
   // this logic is from chatgpt of no coverImageLocalPath
 
   const uploadedCoverImage =
-    coverImageLocalPath && (await uploadOnCloudinary(coverImageLocalPath));
+    coverImageLocalPath && (await uploadOnCloudinary(coverImageLocalPath,"users/coverImages"));
 
   if (!uploadedAvatar) throw new ApiError(400, "Error while uploading avatar on cloudinary");
 
   const user = await User.create({
     fullName,
-    avatar: uploadedAvatar.url,
-    coverImage: uploadedCoverImage?.url || "",
+    avatar: {
+      url: uploadedAvatar.secure_url,
+      public_id: uploadedAvatar.public_id,
+    },
+    coverImage: uploadedCoverImage?.secure_url || "",
     email,
     password,
     username: username.toLowerCase(),
@@ -224,56 +227,148 @@ const updateAccountdetails = asyncHandler(async(req,res) => {
 
 })
 
+// const updateAvatar = asyncHandler(async (req, res) => {
+//     const newAvatarPath = req.file?.path
+
+//     if(!newAvatarPath) throw new ApiError(400,"Avatar file is missing")
+
+//     const updateOnCloudinary = await uploadOnCloudinary(newAvatarPath,"users/avatar")
+//     if(!updateOnCloudinary.url) throw new ApiError(500,"Error while uploading on Cloudinary")
+//     const user = await User.findByIdAndUpdate(req.user?._id,
+//       {
+//         $set: {
+//           avatar: updateOnCloudinary.url
+//         }
+//       },
+//       {new: true}
+//     ).select("-password -refreshToken")
+
+//     return res
+//       .status(200)
+//       .json(new ApiResponse(200, user, "Avatar Successfully updated"));
+
+
+// });
+
 const updateAvatar = asyncHandler(async (req, res) => {
-    const newAvatarPath = req.file?.path
+  const avatarLocalPath =  req.file?.path
+  if (!avatarLocalPath) {
+    throw new ApiError(400, "Avatar file is required");
+  }
 
-    if(!newAvatarPath) throw new ApiError(400,"Avatar file is missing")
 
-    const updateOnCloudinary = await uploadOnCloudinary(newAvatarPath)
-    if(!updateOnCloudinary.url) throw new ApiError(500,"Error while uploading on Cloudinary")
-    const user = await User.findByIdAndUpdate(req.user?._id,
-      {
-        $set: {
-          avatar: updateOnCloudinary.url
-        }
-      },
-      {new: true}
-    ).select("-password -refreshToken")
+// Here i will check that can i do everything without that db query bcz i have access to user object through auth middleware
+
+  const user = await User.findById(req.user._id);
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  const oldAvatar = user.avatar;
+  let newUpload;
+
+  try {
+    // 1️⃣ Upload new image
+    newUpload = await uploadOnCloudinary(avatarLocalPath, "users/avatar");
+
+    // 2️⃣ Update DB
+    user.avatar = {
+      url: newUpload.secure_url,
+      public_id: newUpload.public_id,
+    };
+
+    await user.save({validateBeforeSave: false});
+
+    // 3️⃣ Delete old image AFTER DB success
+    if (oldAvatar?.public_id) {
+      await cloudinary.uploader.destroy(oldAvatar.public_id);
+    }
 
     return res
       .status(200)
-      .json(new ApiResponse(200, user, "Avatar Successfully updated"));
+      .json(new ApiResponse(200, "Avatar updated successfully", user.avatar));
+  } catch (error) {
+    // 🔁 ROLLBACK
 
+    if (newUpload?.public_id) {
+      await cloudinary.uploader.destroy(newUpload.public_id);
+    }
 
+    throw error;
+  }
 });
 
+
+// const updateCover = asyncHandler(async (req, res) => {
+//   const newCoverPath = req.file?.path;
+
+//   if (!newCoverPath) throw new ApiError(400, "CoverImage file is missing");
+
+//   const updateOnCloudinary = await uploadOnCloudinary(newCoverPath);
+//   if (!updateOnCloudinary.url)
+//     throw new ApiError(500, "Error while uploading coverImage on Cloudinary");
+//   const user = await User.findByIdAndUpdate(
+//     req.user?._id,
+//     {
+//       $set: {
+//         coverImage: updateOnCloudinary.url,
+//       },
+//     },
+//     { new: true }
+//   ).select("-password -refreshToken");
+
+//   return res
+//     .status(200)
+//     .json(new ApiResponse(200, user, "CoverImage  Successfully updated"));
+// });
 
 const updateCover = asyncHandler(async (req, res) => {
   const newCoverPath = req.file?.path;
 
-  if (!newCoverPath) throw new ApiError(400, "CoverImage file is missing");
-
-  const updateOnCloudinary = await uploadOnCloudinary(newCoverPath);
-  if (!updateOnCloudinary.url)
-    throw new ApiError(500, "Error while uploading coverImage on Cloudinary");
-  const user = await User.findByIdAndUpdate(
-    req.user?._id,
-    {
-      $set: {
-        coverImage: updateOnCloudinary.url,
-      },
-    },
-    { new: true }
-  ).select("-password -refreshToken");
-
-  return res
-    .status(200)
-    .json(new ApiResponse(200, user, "CoverImage  Successfully updated"));
-});
+    if (!newCoverPath) throw new ApiError(400, "CoverImage file is missing");
 
 
+  const user = await User.findById(req.user._id);
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
 
+  const oldCover = user.coverImage;
+  let newUpload;
 
+  try {
+    // 1️⃣ Upload new image
+    newUpload = await uploadOnCloudinary(newCoverPath, "users/coverImages");
+
+    // 2️⃣ Update DB
+    user.coverImage = {
+      url: newUpload.secure_url,
+      public_id: newUpload.public_id,
+    };
+
+    await user.save({ validateBeforeSave: false });
+
+    // 3️⃣ Delete old image AFTER DB success
+    if (oldCover?.public_id) {
+      await cloudinary.uploader.destroy(oldCover.public_id);
+    }
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(200, "CoverImage updated successfully", user.coverImage)
+      );
+  } catch (error) {
+    // 🔁 ROLLBACK
+
+    if (newUpload?.public_id) {
+      await cloudinary.uploader.destroy(newUpload.public_id);
+    }
+
+    throw error;
+  }
+
+})
 
 
 
