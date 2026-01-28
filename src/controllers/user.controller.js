@@ -153,8 +153,8 @@ const loginUser = asyncHandler(async (req, res) => {
 const logOutUser = asyncHandler(async (req, res) => {
   await User.findByIdAndUpdate(req.user._id,
     {
-      $set: {
-        refreshToken: undefined
+      $unset: {
+        refreshToken: 1 // why not working with undefined -> will check later
       }
     },
     {
@@ -382,3 +382,4 @@ export {
   updateAvatar,
   updateCover,
 };
+
