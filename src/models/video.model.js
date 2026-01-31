@@ -23,7 +23,7 @@ const videoSchema = new Schema(
       required: true,
     },
 
-    time: {
+    duration: {
       type: Number, // from cloudinary
       required: true,
     },
