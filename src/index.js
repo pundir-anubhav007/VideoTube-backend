@@ -2,43 +2,31 @@ import "dotenv/config";
 import connectDB from "./db/index.js";
 import { app } from "./app.js";
 
-/*
-const app = express();
 
+const PORT = process.env.PORT || 8000;
 
-(async () => {
-    try {
-    await mongoose.connect(`${process.env.MONGODB_URI}/${DB_NAME}`);
-        app.on("error", (error) => {
-            console.error(error);
-            throw error;
+const startServer = async () => {
+  try {
+    // 1️⃣ Connect to DB (startup-critical)
+    await connectDB();
 
-            app.listen(process.env.PORT, () => {
-                console.log(`App is listening in PORT ${process.env.PORT}`)
-            })
-
-
-
-        })
-    } catch (error) {
-        console.error("Error: ", error)
-        throw error;
-    }
-})()
-
-IIFEs 
-
-*/
-
-await connectDB()
-  .then(() => {
-    app.on("error", (err) => {
-      console.error("MongoDB connection FAILED", err);
+    // 2️⃣ Start server ONLY after DB is ready
+    const server = app.listen(PORT, () => {
+      console.log(`Server running on http://localhost:${PORT}`);
     });
-    app.listen(process.env.PORT || 8000, () => {
-      `Server is running on http://localhost:${process.env.PORT}`;
+
+    // 3️⃣ Listen for SERVER-LEVEL runtime errors
+    server.on("error", (err) => {
+      console.error("Server runtime error:", err);
+      process.exit(1);
     });
-  })
-  .catch((err) => {
-    console.log("MongoDB connection FAILED", err);
-  });
+  } catch (error) {
+    // 4️⃣ Startup failure → crash hard
+    console.error("Startup failed:", error);
+    process.exit(1);
+  }
+};
+
+startServer();
+
+
