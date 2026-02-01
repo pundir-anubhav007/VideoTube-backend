@@ -63,12 +63,14 @@ const registerUser = asyncHandler(async (req, res) => {
 
   const uploadedAvatar = await uploadOnCloudinary(avatarLocalPath,"users/avatars");
 
+  if (!uploadedAvatar) throw new ApiError(500, "Error while uploading avatar on cloudinary");
   // this logic is from chatgpt of no coverImageLocalPath
 
   const uploadedCoverImage =
     coverImageLocalPath && (await uploadOnCloudinary(coverImageLocalPath,"users/coverImages"));
 
-  if (!uploadedAvatar) throw new ApiError(400, "Error while uploading avatar on cloudinary");
+
+
 
   const user = await User.create({
     fullName,
@@ -76,7 +78,10 @@ const registerUser = asyncHandler(async (req, res) => {
       url: uploadedAvatar.secure_url,
       public_id: uploadedAvatar.public_id,
     },
-    coverImage: uploadedCoverImage?.secure_url || "",
+    coverImage: {
+      url: uploadedCoverImage.secure_url || "",
+      public_id: uploadedCoverImage.public_id || "",
+    },
     email,
     password,
     username: username.toLowerCase(),
