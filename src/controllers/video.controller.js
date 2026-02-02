@@ -1,9 +1,12 @@
+// Controllers modify krne hai middleware k hissab se jo owner check krta hai
+
 import { asyncHandler } from "../utils/asyncHandler";
 import { ApiError } from "../utils/ApiError.js";
 import { Video } from "../models/video.model.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import mongoose from "mongoose";
+import { isOwner } from "../middlewares/owner.middleware.js";
 
 
 
@@ -140,7 +143,7 @@ const publishAvideo = asyncHandler(async (req,res) => {
 
 const { title, description } = req.body
 
-if(!title || !description) {
+if(!title?.trim() || !description?.trim()) {
     throw new ApiError(400,
         "Title and Description is required"
     )
@@ -156,9 +159,16 @@ if(!thumbnailLocalPath) {
     throw new ApiError(400, "Thumbnail is required")
 }
 
-const uploadedVideo = await uploadOnCloudinary(VideoLocalPath,"Videos")
+// const uploadedVideo = await uploadOnCloudinary(VideoLocalPath,"Videos")
 
-const uploadedThumbnail = await uploadOnCloudinary(thumbnailLocalPath,"Thumbnails")
+// const uploadedThumbnail = await uploadOnCloudinary(thumbnailLocalPath,"Thumbnails")
+
+// Nice learining by GPT
+const [uploadedVideo, uploadedThumbnail] = await Promise.all([
+  uploadOnCloudinary(VideoLocalPath, "Videos"),
+  uploadOnCloudinary(thumbnailLocalPath, "Thumbnails"),
+]);
+
 
 if(!uploadedVideo || !uploadedThumbnail) {
     return res.status(500)
@@ -184,28 +194,32 @@ try {
       description: description,
       duration: uploadedVideo.duration || 0,
       isPublished: true,
-      owner: req.user._id
+      owner: req.user?._id
 
     });
+
+    return res.status(201)
+    .json( new ApiResponse(201,
+        videoDoc,
+        "Video Published Successfully"
+    ))
+
+
 } catch (error) {
 
-    if(uploadedVideo.public_id) {
+    if(uploadedVideo?.public_id) {
         await cloudinary.uploader.destroy(uploadedVideo.public_id, {
         resource_type: "video"
     })
     }
-    if(uploadedThumbnail.public_id) {
+    if(uploadedThumbnail?.public_id) {
         await cloudinary.uploader.destroy(uploadedThumbnail.public_id, {
           resource_type: "image",
         });
     }
 
-    return res.status(500)
-    .json(new ApiResponse(
-        500,
-        videoDoc,
-        "Video uploaded Successfully"
-    ))
+  throw new ApiError(500, "Failed to create video document");
+
 
 }
 
@@ -241,29 +255,130 @@ const getVideoById = asyncHandler(async (req,res) => {
 })
 
 const updateVideo = asyncHandler(async (req,res) => {
+    const owner = req.user?._id;
+    const { videoId } = req.params;
+
     const newVideoUploadpath = req.file?.path
-    const owner = req.user._id
-    const videoId = req.params
+    if(!newVideoUploadpath) throw new ApiError(
+        400,
+        "New Video File is required"
+    )
+
     if(!mongoose.Types.isValidObjectId(videoId))
         throw new ApiError(
     400,
-    "Video ID is not found")
+    "Invalid VideoID")
 
-    const video = await Video.findOne({owner: owner, isPublished: true })
+    const video = await Video.findOne({owner, _id: videoId })
 
     if(!video) {
-        throw new ApiError(404, "Unauthorized login");
+        throw new ApiError(404, "Searched Video not Found");
     }
 
-    const oldVideo = video.videoFile
+    const oldVideoPublicId = video.videoFile.public_id;
+
     let newVideo;
+
     try {
-        newVideo = await uploadOnCloudinary(newVideoUploadpath,"Videos")
+
+        newVideo = await uploadOnCloudinary(newVideoUploadpath, "Videos");
+
+        // This also becomes redundant because we are now doing set and not save
+
+        // if ( newVideo?.secure_url && newVideo?.public_id ) {
+        //     video.videoFile = {
+        //         url: newVideo.secure_url,
+        //         public_id: newVideo.public_id
+        //     }
+        // }
+
+       //  await video.save()
+       // Here we did that because we are updating only videoFile field and by doing this we are optimising the db operation
+
+       if(!newVideo?.secure_url || newVideo?.public_id) throw new ApiError(
+        500,
+        "Cloudinary upload failed"
+       )
+
+
+    const updatedVideoFileField = await Video.findByIdAndUpdate(
+         videoId,
+         {
+           $set: {
+             videoFile: {
+               url: newVideo?.secure_url,
+               public_id: newVideo?.public_id,
+             },
+           },
+         },
+         { new: true }
+       );
+
+
+        await cloudinary.uploader.destroy(oldVideoPublicId,{
+            resource_type: "video"
+        })
+
+        return res.status(
+          200).json(
+            new ApiResponse(
+            200,
+            updatedVideoFileField,
+            "Video Updated Successfully"
+          )
+          );
 
     } catch (error) {
+
+        if(newVideo?.public_id) {
+           await cloudinary.uploader.destroy(newVideo.public_id,
+            {
+                resource_type: "video"
+            }
+           )
+        }
+
+        throw new ApiError(500,
+            "Failed to update Video"
+        )
 
     }
 })
 
+const deleteVideo = asyncHandler(async (req, res) => {
+  const videoId = req.resource?._id
+  if(!videoId) throw new ApiError(404,
+    "VideoId not found"
+  )
 
-export { getAllVideo, publishAvideo, getVideoById };
+  const videoToDelete = await Video.findByIdAndDelete(videoId);
+
+  if(!videoToDelete) {
+    throw new ApiError(500,
+        "Failed to delete Video"
+    )
+  }
+
+    // await User.findByIdAndUpdate(req.user._id,
+    //   {
+    //     $unset: {
+    //       refreshToken: 1 // why not working with undefined -> will check later
+    //     }
+    //   },
+    //   {
+    //     new: true
+    //   }
+    // )
+
+  
+
+});
+
+const togglePublishStatus = asyncHandler(async (req, res) => {
+  const { videoId } = req.params;
+});
+
+
+
+
+export { getAllVideo, publishAvideo, getVideoById, updateVideo, deleteVideo, togglePublishStatus };
