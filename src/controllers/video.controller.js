@@ -87,6 +87,8 @@ const getAllVideo = asyncHandler(async(req,res) => {
         throw new ApiError(400, "Invalid User ID")
     }
 
+
+    // we need to change the filter to make it dynamic based on query presence
     const filter = {
       owner: userId,
     };
@@ -278,6 +280,7 @@ const updateVideo = asyncHandler(async (req,res) => {
     const oldVideoPublicId = video.videoFile.public_id;
 
     let newVideo;
+    let dbUpdated = false;
 
     try {
 
@@ -295,7 +298,7 @@ const updateVideo = asyncHandler(async (req,res) => {
        //  await video.save()
        // Here we did that because we are updating only videoFile field and by doing this we are optimising the db operation
 
-       if(!newVideo?.secure_url || newVideo?.public_id) throw new ApiError(
+       if(!newVideo?.secure_url || !newVideo?.public_id) throw new ApiError(
         500,
         "Cloudinary upload failed"
        )
@@ -314,6 +317,8 @@ const updateVideo = asyncHandler(async (req,res) => {
          { new: true }
        );
 
+       dbUpdated = true;
+
 
         await cloudinary.uploader.destroy(oldVideoPublicId,{
             resource_type: "video"
@@ -330,7 +335,7 @@ const updateVideo = asyncHandler(async (req,res) => {
 
     } catch (error) {
 
-        if(newVideo?.public_id) {
+        if(newVideo?.public_id && !dbUpdated) {
            await cloudinary.uploader.destroy(newVideo.public_id,
             {
                 resource_type: "video"
@@ -350,35 +355,70 @@ const deleteVideo = asyncHandler(async (req, res) => {
   if(!videoId) throw new ApiError(404,
     "VideoId not found"
   )
+  const videoPublicId = req.resource?.videoFile?.public_id
 
-  const videoToDelete = await Video.findByIdAndDelete(videoId);
+  if(!videoPublicId) throw new ApiError(404,
+    "Can't find public Id of the target video"
+  )
 
-  if(!videoToDelete) {
-    throw new ApiError(500,
-        "Failed to delete Video"
+  try {
+    const deletedVideo = await cloudinary.uploader.destroy(videoPublicId, {
+      resource_type: "video",
+    });
+
+    if(deletedVideo.result !== "ok") throw new ApiError(500,
+      "Failed to delete video from cloudinary"
     )
+
+    const videoToDelete = await Video.findByIdAndDelete(videoId);
+
+    if(!videoToDelete) {
+      throw new ApiError(500,
+          "Failed to delete Video from DB"
+      )
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200,
+           " Video deleted Successfully"
+        )
+    )
+  } catch (error) {
+
+   throw new ApiError(500,
+    "Failed to delete video"
+   )
+
+
   }
 
-    // await User.findByIdAndUpdate(req.user._id,
-    //   {
-    //     $unset: {
-    //       refreshToken: 1 // why not working with undefined -> will check later
-    //     }
-    //   },
-    //   {
-    //     new: true
-    //   }
-    // )
-
-  
 
 });
 
 const togglePublishStatus = asyncHandler(async (req, res) => {
-  const { videoId } = req.params;
+  const video = req.resource;
+
+  if (!video) {
+    throw new ApiError(404, "Video not found");
+  }
+
+
+  const statusFlip = await Video.findByIdAndUpdate(
+    video._id,
+    { $set: { isPublished: !video.isPublished } },
+    { new: true }
+  );
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        statusFlip,
+        `Video is now ${statusFlip.isPublished ? "Published" : "Unpublished"}`
+      )
+    );
 });
-
-
 
 
 export { getAllVideo, publishAvideo, getVideoById, updateVideo, deleteVideo, togglePublishStatus };
