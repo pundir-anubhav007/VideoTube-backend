@@ -5,11 +5,7 @@ import { ApiError } from "../utils/ApiError";
 import { createCommentService } from "../services/createComments.service.js";
 import { getCommentService } from "../services/getComments.service.js";
 import { updateCommentService } from "../services/updateCommentsService.js";
-
-
-
-
-
+import { deleteCommentService } from "../services/deleteComments.service.js";
 
 const createComment = asyncHandler(async (req, res) => {
   const { content, commentableId, commentableType, parentCommentId } = req.body;
@@ -105,37 +101,49 @@ const getComments = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, result, "Comments fetched successfully"));
 });
 
-const updateComments = asyncHandler(async (req,res) => {
+const updateComments = asyncHandler(async (req, res) => {
+  const { commentId } = req.params;
+  const owner = req.user?._id;
+  const content = req.body.content;
 
-  const {commentId} = req.params
-  const owner = req.user?._id
-  const content = req.body.content
+  if (!commentId?.trim()) throw new ApiError(400, "Comment ID is required");
 
-  if(!commentId?.trim()) throw new ApiError(400,
-    "Comment ID is required"
-  )
+  if (!owner) throw new ApiError(401, "Unauthorized Access");
 
-  if(!owner) throw new ApiError(401,
-    "Unauthorized Access"
-  )
-
-    if (!content?.trim()) throw new ApiError(400, "Comment can't be empty");
-
+  if (!content?.trim()) throw new ApiError(400, "Comment can't be empty");
 
   const payload = {
     commentId,
     owner,
-    content: content.trim()
-  }
+    content: content.trim(),
+  };
 
   const result = await updateCommentService(payload);
 
-return res.status(200)
-.json( new ApiResponse(
-  200,
-  result,
-  "Comment updated Successfully"
-))
+  return res
+    .status(200)
+    .json(new ApiResponse(200, result, "Comment updated Successfully"));
+});
 
-})
-export { createComment, getComments, updateComments };
+const deleteComment = asyncHandler(async (req, res) => {
+  const { commentId } = req.params;
+  const owner = req.user._id;
+
+  if (!mongoose.Types.isValidObjectId(commentId))
+    throw new ApiError(400, "Invalid comment Id");
+
+  if (!owner) throw new ApiError(401, "Unauthorized Access");
+
+  const payload = {
+    commentId,
+    owner,
+  };
+
+  const result = await deleteCommentService(payload);
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, result, "Comment deleted successfully"));
+});
+
+export { createComment, getComments, updateComments, deleteComment };
