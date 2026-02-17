@@ -6,6 +6,7 @@ import { createCommentService } from "../services/createComments.service.js";
 import { getCommentService } from "../services/getComments.service.js";
 import { updateCommentService } from "../services/updateCommentsService.js";
 import { deleteCommentService } from "../services/deleteComments.service.js";
+import { likeCommentService } from "../services/likeComment.service.js";
 
 const createComment = asyncHandler(async (req, res) => {
   const { content, commentableId, commentableType, parentCommentId } = req.body;
@@ -146,4 +147,31 @@ const deleteComment = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, result, "Comment deleted successfully"));
 });
 
-export { createComment, getComments, updateComments, deleteComment };
+const likeComment = asyncHandler(async (req, res) => {
+  const { commentId } = req.params;
+  const likedBy = req.user._id;
+
+  if (!mongoose.Types.isValidObjectId(commentId))
+    throw new ApiError(400, "Invalid comment Id");
+
+  if (!likedBy) throw new ApiError(401, "Unauthorized Access");
+
+  const payload = {
+    commentId,
+    likedBy,
+  };
+
+  const result = await likeCommentService(payload);
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, result, "Comment liked successfully"));
+});
+
+export {
+  createComment,
+  getComments,
+  updateComments,
+  deleteComment,
+  likeComment,
+};
