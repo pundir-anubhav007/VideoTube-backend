@@ -1,14 +1,14 @@
 import mongoose from "mongoose";
-import { asyncHandler } from "../utils/asyncHandler";
-import { ApiError } from "../utils/ApiError";
-import { Video } from "../models/video.model";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { ApiError } from "../utils/ApiError.js";
+import { Video } from "../models/video.model.js";
 
 export const isOwner = asyncHandler(async (req,_, next) => {
     const {videoId} = req.params
 
     const reqOwner = req.user?._id
 
-    if(!mongoose.Types.isValidObjectId(videoId)) {
+    if(!mongoose.isValidObjectId(videoId)) {
         throw new ApiError(400,
             "Invalid Video ID"
         )
