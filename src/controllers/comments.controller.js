@@ -17,14 +17,14 @@ const createComment = asyncHandler(async (req, res) => {
 
   if (!content?.trim()) throw new ApiError(400, "Comment can't be empty");
 
-  if (!mongoose.Types.isValidObjectId(commentableId))
+  if (!mongoose.isValidObjectId(commentableId))
     throw new ApiError(400, "Invalid commentable Id");
 
   const allowedTypes = ["Tweet", "Video"];
   if (!allowedTypes.includes(commentableType))
     throw new ApiError(400, "Invalid commentable Type");
 
-  if (parentCommentId && !mongoose.Types.isValidObjectId(parentCommentId))
+  if (parentCommentId && !mongoose.isValidObjectId(parentCommentId))
     throw new ApiError(400, "Invalid parentComment ID");
 
   const isReply = Boolean(parentCommentId);
@@ -57,10 +57,10 @@ const getComments = asyncHandler(async (req, res) => {
   } = req.query;
   const { commentableId, parentCommentId } = req.params;
 
-  if (!mongoose.Types.isValidObjectId(commentableId))
+  if (!mongoose.isValidObjectId(commentableId))
     throw new ApiError(400, "Invalid commentable ID");
 
-  if (parentCommentId && !mongoose.Types.isValidObjectId(parentCommentId))
+  if (parentCommentId && !mongoose.isValidObjectId(parentCommentId))
     throw new ApiError(400, "Invalid parent comment ID");
 
   const mode = parentCommentId ? "reply" : "top";
@@ -130,7 +130,7 @@ const deleteComment = asyncHandler(async (req, res) => {
   const { commentId } = req.params;
   const owner = req.user._id;
 
-  if (!mongoose.Types.isValidObjectId(commentId))
+  if (!mongoose.isValidObjectId(commentId))
     throw new ApiError(400, "Invalid comment Id");
 
   if (!owner) throw new ApiError(401, "Unauthorized Access");
@@ -151,7 +151,7 @@ const likeComment = asyncHandler(async (req, res) => {
   const { commentId } = req.params;
   const likedBy = req.user._id;
 
-  if (!mongoose.Types.isValidObjectId(commentId))
+  if (!mongoose.isValidObjectId(commentId))
     throw new ApiError(400, "Invalid comment Id");
 
   if (!likedBy) throw new ApiError(401, "Unauthorized Access");

@@ -29,7 +29,7 @@ export const getCommentService = async (options) => {
     oldest: { createdAt: 1 },
     // This top comments logic will change the structure of the aggregation pipelines
     // I will study this later
-    // top: {likesCount: -1}
+    top: {likesCount: -1}
   };
 
   const sortStage = sortStageLogic[normalizedSort] || sortStageLogic.newest;
@@ -89,7 +89,7 @@ export const getCommentService = async (options) => {
 
   const totalDocs = await Comment.countDocuments(matchStage)
 
-  if (skip >= totalDocs) return empty;
+  if (skip >= totalDocs) return ;
 
   const hasNextPage = skip + comments.length < totalDocs
 

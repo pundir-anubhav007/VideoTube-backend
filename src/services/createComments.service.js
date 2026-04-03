@@ -11,6 +11,9 @@ export const createCommentService = async (payload) => {
 
   // 1. Check target exists
   // 2. If reply, check parent comment exists
+  // 3. Increment counters
+  // 4. Save comment
+  // 5. Return saved comment
 
   let target;
 
@@ -38,7 +41,7 @@ export const createCommentService = async (payload) => {
       parentCommentDoc.commentableId.toString() !== commentableId ||
       parentCommentDoc.commentableType.toString() !== commentableType
     ) {
-      throw new ApiError(401, "Forbidden access");
+      throw new ApiError(403, "Forbidden access");
     }
   }
 
@@ -77,8 +80,4 @@ export const createCommentService = async (payload) => {
   const newComment = await Comment.create(commentData);
 
   return newComment;
-
-  // 3. Increment counters
-  // 4. Save comment
-  // 5. Return saved comment
 };
