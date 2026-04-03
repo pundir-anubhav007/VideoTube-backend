@@ -1,14 +1,13 @@
-import multer from 'multer'
-
+import multer from "multer";
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, "./public/temp");
   },
   filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
 
-    // here the file. filename should not be the original name as many files can come with same name from user end
-    cb(null, file.originalname);
+    cb(null, file.fieldname + "-" + uniqueSuffix + "-" + file.originalname);
   },
 });
 
@@ -21,4 +20,3 @@ const storage = multer.diskStorage({
 export const upload = multer({
   storage: storage,
 });
-

@@ -81,6 +81,7 @@ const getAllVideo = asyncHandler(async (req, res) => {
     query,
     sortBy = "createdAt",
     userId,
+    excludeId,
   } = req.query;
 
   page = parseInt(page);
@@ -94,6 +95,10 @@ const getAllVideo = asyncHandler(async (req, res) => {
   const filter = {
     owner: userId,
   };
+
+  if (excludeId && mongoose.isValidObjectId(excludeId)) {
+    filter._id = { $ne: excludeId };
+  }
 
   if (query) {
     filter.$or = [
@@ -217,7 +222,7 @@ const getVideoById = asyncHandler(async (req, res) => {
   if (!mongoose.isValidObjectId(videoId)) {
     throw new ApiError(400, "Invalid VideoId");
   }
-  const result = await Video.findOne({ _id: videoId, isPublished: true });
+  const result = await Video.findOne({ _id: videoId, isPublished: true }).populate("owner", "username avatar");
   if (!result) {
     throw new ApiError(404, `Video with VideoID ${videoId} does not exist`);
   }

@@ -5,6 +5,7 @@ import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import mongoose from "mongoose";
 
+
 // we should console multiple things like req.body, User.findOne, req.files
 // I need to do this to improve learning
 
@@ -137,7 +138,10 @@ const loginUser = asyncHandler(async (req, res) => {
 
   const options = {
     httpOnly: true,
-    secure: true,
+    secure: false,
+    sameSite: "Lax",
+    path: "/",
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   };
 
   return res
@@ -207,7 +211,7 @@ const getCurrentUser = asyncHandler(async (req,res) => {
 
   return res
   .status(200)
-  .json(req.user, "Current User is fetched Successfully ")
+  .json(new ApiResponse(200, req.user, "Current User is fetched Successfully "))
 
 })
 
@@ -275,7 +279,7 @@ const updateAvatar = asyncHandler(async (req, res) => {
 
   try {
     // 1️⃣ Upload new image
-    newUpload = await uploadOnCloudinary(avatarLocalPath, "users/avatar");
+    newUpload = await uploadOnCloudinary(avatarLocalPath, "users/avatars");
 
     // 2️⃣ Update DB
     user.avatar = {
@@ -434,7 +438,7 @@ const getUserChannelProfile = asyncHandler(async(req,res) => {
     },
   ]);
 
-  console.log(channel)
+  //console.log(channel)
 
   if(!channel?.length) {
     throw new ApiError(404, "Channel does not exists!!")
@@ -480,16 +484,18 @@ const getwatchHistory = asyncHandler(async (req, res) => {
               ]
             }
           },{
-            $addFields: "$owner"
+            $addFields: {
+              owner: { $arrayElemAt: ["$owner", 0] }
+            }
           }
         ]
       },
     },
   ]);
 
-  console.log(user)
-  console.log(user[0])
-  console.log(user[0].watchHistory)
+  // console.log(user)
+  // console.log(user[0])
+  //console.log(user[0].watchHistory)
 
   return res
   .status(200)

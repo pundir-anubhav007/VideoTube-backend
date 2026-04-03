@@ -42,13 +42,19 @@ const getPlaylistById = asyncHandler(async (req, res) => {
     throw new ApiError(401, "Unauthorized Access");
   }
 
-  if (!mongoose.Types.isValidObjectId(playlistId))
+  if (!mongoose.isValidObjectId(playlistId))
     throw new ApiError(400, "Invalid playlist ID");
 
   const playlist = await Playlist.findOne({
     _id: playlistId,
     owner: currentUserId,
-  }).lean(); // this .lean() will convert mongoose document into plain js object
+  }).populate({
+        path: "videos",
+        populate: {
+            path: "owner",
+            select: "fullName avatar username"
+        }
+    }).lean(); // this .lean() will convert mongoose document into plain js object
 
   if (!playlist) {
     throw new ApiError(404, "Playlist not found");
@@ -62,7 +68,7 @@ const getPlaylistById = asyncHandler(async (req, res) => {
 const getUserPlaylists = asyncHandler(async (req, res) => {
   const { userId } = req.params;
 
-  if (!mongoose.Types.isValidObjectId(userId))
+  if (!mongoose.isValidObjectId(userId))
     throw new ApiError(400, "Invalid USER ID");
 
   const playlists = await Playlist.find({ owner: userId });
@@ -83,10 +89,10 @@ const getUserPlaylists = asyncHandler(async (req, res) => {
 const addVideoToPlaylist = asyncHandler(async (req, res) => {
   const { playlistId, videoId } = req.params;
 
-  if (!mongoose.Types.isValidObjectId(playlistId))
+  if (!mongoose.isValidObjectId(playlistId))
     throw new ApiError(400, "Invalid PlaylistId");
 
-  if (!mongoose.Types.isValidObjectId(videoId))
+  if (!mongoose.isValidObjectId(videoId))
     throw new ApiError(400, "Invalid Video ID");
 
   const owner = req.user?._id;
@@ -123,10 +129,10 @@ const addVideoToPlaylist = asyncHandler(async (req, res) => {
 const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
   const { playlistId, videoId } = req.params;
 
-  if (!mongoose.Types.isValidObjectId(playlistId))
+  if (!mongoose.isValidObjectId(playlistId))
     throw new ApiError(400, "Invalid Playlist ID");
 
-  if (!mongoose.Types.isValidObjectId(videoId))
+  if (!mongoose.isValidObjectId(videoId))
     throw new ApiError(400, "Invalid Video ID");
 
   const owner = req.user?._id;
@@ -167,7 +173,7 @@ const deletePlaylist = asyncHandler(async (req, res) => {
   const { playlistId } = req.params;
   // TODO: delete playlist
 
-  if(!mongoose.Types.isValidObjectId(playlistId)) throw new ApiError(400,
+  if(!mongoose.isValidObjectId(playlistId)) throw new ApiError(400,
     "Invalid Playlist ID"
   )
 
@@ -209,7 +215,7 @@ const updatePlaylist = asyncHandler(async (req, res) => {
   const { playlistId } = req.params;
   const { name, description } = req.body;
 
-  if(!mongoose.Types.isValidObjectId(playlistId)) throw new ApiError(400,
+  if(!mongoose.isValidObjectId(playlistId)) throw new ApiError(400,
     "Invalid playlist ID"
   )
 

@@ -77,6 +77,7 @@ const uploadOnCloudinary = async (localFilePath, folder) => {
 
     return response;
   } catch (error) {
+    console.error("Cloudinary upload error:", error);
     throw new ApiError(502, "Cloudinary upload failed", error);
   } finally {
     // ALWAYS clean temp file

@@ -15,6 +15,7 @@ import { upload } from "../middlewares/multer.middleware.js";
 const router = Router();
 
 router.get("/fetch", getAllVideo);
+
 router.post(
   "/upload",
   verifyJWT,
@@ -24,7 +25,9 @@ router.post(
   ]),
   publishAvideo
 );
+
 router.get("/:videoId", getVideoById);
+
 router.patch(
   "/:videoId",
   verifyJWT,
