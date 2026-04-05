@@ -1,10 +1,13 @@
 import express from "express";
 import cors from "cors";
+import morganMiddleware from "./middlewares/morgan.middleware.js";
 import cookieParser from "cookie-parser";
-import { errorHandler } from "./middlewares/golbarError.middleware.js";
+import { errorHandler } from "./middlewares/golbalError.middleware.js";
 
 
 const app = express();
+
+app.use(morganMiddleware);
 
 
 const corsOptions = {
@@ -45,6 +48,12 @@ import playlistRoutes from "./routes/playlist.routes.js";
 app.use("/api/v1/users", userRouter);
 app.use("/api/v1/videos", videoRoutes);
 app.use("/api/v1/playlists", playlistRoutes);
+
+
+
+
+
+
 
 app.use(errorHandler);
 export { app };
